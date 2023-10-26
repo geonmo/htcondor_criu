@@ -1,9 +1,23 @@
-[CM]
-node1.gsdc.school
+[htcondor:children]
+cm
+execute
+access
+
+[cm]
+192.168.108.4
 
 [execute]
-node2.gsdc.school
-node3.gsdc.school
+192.168.108.5
+192.168.108.6
 
 [access]
-node0.gsdc.school
+192.168.108.3
+
+[cm:vars]
+condor_daemon_list = MASTER,NEGOTIATOR,COLLECTOR
+
+[execute:vars]
+condor_daemon_list = MASTER,STARTD
+
+[access:vars]
+condor_daemon_list = MASTER,SCHEDD

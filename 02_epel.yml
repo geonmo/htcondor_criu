@@ -1,0 +1,5 @@
+- name: install epel repo, grid and pool account setting
+  hosts: all
+  roles:
+    - role: geerlingguy.repo-epel
+

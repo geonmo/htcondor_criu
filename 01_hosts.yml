@@ -1,0 +1,20 @@
+- name: Remove 127.0.0.1 for private interface
+  hosts: all
+  tasks:
+    - replace:
+        path: /etc/hosts
+        regexp: '^127.0.0.1\s*node?.*'
+        replace: ''
+
+- name: Replace host name
+  hosts: htcondor
+  vars:
+    - hostlist: |
+        192.168.108.3 node0.criu.test node0
+        192.168.108.4 node1.criu.test node1
+        192.168.108.5 node2.criu.test node2
+        192.168.108.6 node3.criu.test node3
+  tasks:
+    - copy:
+        dest: /etc/hosts
+        content: "{{ hostlist }}"

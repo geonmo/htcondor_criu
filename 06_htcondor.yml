@@ -1,0 +1,16 @@
+- name: Setup local condor WN
+  hosts: cm,execute,access
+  roles:
+    - role: geonmo.htcondor
+      condor_version: "10.x"
+      condor_domain: "criu.test"
+      condor_admin: "admin@node0.{{ condor_domain }}"
+      condor_host: "node1.{{ condor_domain }}"
+      condor_name: "HTCondor Cluster"
+      enable_dynamicslot: true
+  tasks:
+    - name: Install Apptainer packages
+      package:
+        name: ['apptainer','apptainer-suid']
+        state: latest
+
