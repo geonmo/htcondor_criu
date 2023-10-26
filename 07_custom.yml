@@ -1,0 +1,23 @@
+- name: Fix NIC to use internal network
+  hosts: all
+  vars:
+    ipinfo:
+      - { name: "node0", ip: "192.168.108.3" }
+      - { name: "node1", ip: "192.168.108.4" }
+      - { name: "node2", ip: "192.168.108.5" }
+      - { name: "node3", ip: "192.168.108.6" }
+  tasks:
+    - copy: 
+        dest: /etc/condor/config.d/03-private.conf 
+        content: "BIND_ALL_INTERFACES = FALSE\nNETWORK_INTERFACE = {{ item.ip }}\n" 
+      when: 
+        - "ansible_hostname == item.name"
+      with_items:
+        - "{{ ipinfo }}"
+      notify: restart_condor
+  handlers: 
+    - name: restart_condor
+      service: 
+        name: condor
+        state: restarted
+
