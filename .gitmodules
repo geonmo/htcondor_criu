@@ -1,0 +1,9 @@
+[submodule "criu_test"]
+	path = criu_test
+	url = git@github.com:geonmo/criu_test.git
+[submodule "condor_gui"]
+	path = condor_gui
+	url = git@github.com:geonmo/condor_gui.git
+[submodule "htcondorce_on_vagrant"]
+	path = htcondorce_on_vagrant
+	url = git@github.com:geonmo/htcondorce_on_vagrant.git

@@ -1,0 +1,9 @@
+[CM]
+node1.gsdc.school
+
+[execute]
+node2.gsdc.school
+node3.gsdc.school
+
+[access]
+node0.gsdc.school
