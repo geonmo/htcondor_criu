@@ -4,13 +4,16 @@ from: almalinux:9
 	openssl s_client -showcerts -servername "www.anaconda.com" -connect www.anaconda.com:443 > somansa.crt
 	cp somansa.crt /etc/pki/ca-trust/source/anchors/ ; update-ca-trust force-enable; update-ca-trust extract 
         dnf install -y epel-release wget
-	dnf install -y procps-ng "root-hist*" "root-graf*" "root-gui*" "root-io*" "root-cli*"
-	dnf group install "Development Tools"
+	dnf install -y procps-ng 
+	#dnf install -y "root-hist*" "root-graf*" "root-gui*" "root-io*" "root-cli*"
+	dnf group install -y "Development Tools"
+	dnf install -y python3-pip
 	wget http://github.com/checkpoint-restore/criu/archive/v3.18/criu-3.18.tar.gz
         tar -xvf criu-3.18.tar.gz
         cd criu-3.18
         dnf install -y libcap-devel libbsd-devel xmlto libnl3-devel
         dnf install -y --enablerepo crb libnet-devel protobuf protobuf-c protobuf-c-devel protobuf-compiler protobuf-devel
         make install
+
 %environment
 	export PATH=/usr/local/bin:/usr/local/sbin:$PATH

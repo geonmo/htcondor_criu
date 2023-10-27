@@ -21,3 +21,35 @@
         name: condor
         state: restarted
 
+- name: Add Apptainer feature for htcondor cluster
+  hosts: execute,access
+  tasks:
+    - copy:
+        dest: /etc/condor/config.d/04-apptainer.conf
+        content: "SINGULARITY_JOB =  !isUndefined(TARGET.SingularityImage)\nSINGULARITY_IMAGE_EXPR = TARGET.SingularityImage\nSINGULARITY_TARGET_DIR = /srv\nMOUNT_UNDER_SCRATCH = /tmp, /var/tmp\nSINGULARITY_BIND_EXPR=ifThenElse( isUndefined(TARGET.SingularityBind),\"/home\",TARGET.SingularityBind)\nSINGULARITY_EXTRA_ARGUMENTS=ifThenElse( isUndefined(TARGET.SingularityExtraArgs),\"\",TARGET.SingularityExtraArgs)\n"
+      notify: restart_condor
+  handlers:
+    - name: restart_condor
+      service:
+        name: condor
+        state: restarted
+
+- name: Install fakeroot
+  hosts: all
+  tasks:
+    - package:
+        name: fakeroot
+        state: latest
+
+- name: Add checkpoint group
+  hosts: all
+  tasks:
+    - group:
+        name: checkpoint
+        state: present
+        gid: 10001
+    - user:
+        name: geonmo
+        groups: 
+          - checkpoint
+

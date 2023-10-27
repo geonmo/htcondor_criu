@@ -1,0 +1,9 @@
+- name: Modify Capability of group checkpoint
+  hosts: all
+  tasks:
+    - name: 모든 Capability 해제 
+      shell:
+        cmd: "sudo apptainer capability drop --group checkpoint all"
+      ignore_errors: yes
+    - shell:
+        cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore,cap_net_admin,cap_sys_resource"
