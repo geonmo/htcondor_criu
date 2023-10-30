@@ -1,3 +1,0 @@
-[submodule "condor_gui"]
-	path = condor_gui
-	url = git@github.com:geonmo/condor_gui.git
