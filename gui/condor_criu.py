@@ -7,8 +7,9 @@ class MyWindow(QWidget):
     def __init__(self,JDS=None):
         super().__init__()
         self.appName = ""
-        self.execFname = ""
-        self.scriptFName = ""
+        self.bashcontent = ""
+        self.applicationFName = ""
+        self.containerImage = "root.sif"
         self.fileListFname = ""
         self.arguements= ""
         self.outError =""
@@ -21,34 +22,40 @@ class MyWindow(QWidget):
         self.setupUI()
 
     def setupUI(self):
-        #self.layout = QGridLayout()
         self.appLayout = QHBoxLayout()
         self.appLabel = QLabel("App Name :")
         self.appLineEdit = QLineEdit()
         self.appLineEdit.textChanged.connect(self.setAppName)
-        #self.appProcessButton = QPushButton("$(Process)")
-        #self.appProcessButton.clicked.connect(self.appAddProcess)
         self.appLayout.addWidget(self.appLabel)
         self.appLayout.addWidget(self.appLineEdit)
-        #self.appLayout.addWidget(self.appProcessButton)
 
-        self.executeLayout = QHBoxLayout()
-        self.executeLabel = QLabel("Running Script File Name:")
-        self.executeLineEdit = QLineEdit()
-        self.executeButton = QPushButton("Open file")
-        self.executeButton.clicked.connect(self.openExecuteFile)
-        self.executeLayout.addWidget(self.executeLabel)
-        self.executeLayout.addWidget(self.executeLineEdit)
-        self.executeLayout.addWidget(self.executeButton)
 
-        self.scriptLayout = QHBoxLayout()
-        self.scriptLabel = QLabel("Analsis Code File Name:")
-        self.scriptLineEdit = QLineEdit()
-        self.scriptButton = QPushButton("Open file")
-        self.scriptButton.clicked.connect(self.openScriptFile)
-        self.scriptLayout.addWidget(self.scriptLabel)
-        self.scriptLayout.addWidget(self.scriptLineEdit)
-        self.scriptLayout.addWidget(self.scriptButton)
+        self.bashLayout = QHBoxLayout()
+        self.bashLayout2 = QHBoxLayout()
+        self.bashLabel = QLabel("Preconfiguration bash script contents to run the application:")
+        self.bashTextEdit = QTextEdit()
+        self.bashTextEdit.setText("#!/bin/bash\nsource /cvmfs/cms.cern.ch/cmsset_default.sh")
+        self.bashLayout.addWidget(self.bashLabel)
+        self.bashLayout2.addWidget(self.bashTextEdit)
+        
+
+        self.applicationLayout = QHBoxLayout()
+        self.applicationLabel = QLabel("Application File Name:")
+        self.applicationLineEdit = QLineEdit()
+        self.applicationButton = QPushButton("Open file")
+        self.applicationButton.clicked.connect(self.openApplicationFile)
+        self.applicationLayout.addWidget(self.applicationLabel)
+        self.applicationLayout.addWidget(self.applicationLineEdit)
+        self.applicationLayout.addWidget(self.applicationButton)
+
+        self.containerLayout = QHBoxLayout()
+        self.containerLabel = QLabel("Container Image File Name:")
+        self.containerLineEdit = QLineEdit()
+        self.containerButton = QPushButton("Open file")
+        self.containerButton.clicked.connect(self.openContainerFile)
+        self.containerLayout.addWidget(self.containerLabel)
+        self.containerLayout.addWidget(self.containerLineEdit)
+        self.containerLayout.addWidget(self.containerButton)
 
         self.fileListLayout = QHBoxLayout()
         self.fileListLabel = QLabel("FileList File Name:")
@@ -74,8 +81,14 @@ class MyWindow(QWidget):
         self.checkPointCheckbox = QCheckBox("Enable CheckPoint",self)
         self.checkPointCheckbox.stateChanged.connect(self.setCheckPoint)
         self.checkPointLayout.addWidget(self.checkPointCheckbox)
- 
 
+        self.jdlCustomLayout = QHBoxLayout()
+        self.jdlCustomLayout2 = QHBoxLayout()
+        self.jdlCustomLabel = QLabel("Custom line for JDL:")
+        self.jdlCustomTextEdit = QTextEdit()
+        self.jdlCustomTextEdit.setText("accounting_group= group_cms\n")
+        self.jdlCustomLayout.addWidget(self.jdlCustomLabel)
+        self.jdlCustomLayout2.addWidget(self.jdlCustomTextEdit)
 
         self.doneLayout = QHBoxLayout()
         self.doneButton = QPushButton("Done")
@@ -85,62 +98,129 @@ class MyWindow(QWidget):
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(self.appLayout)
-        self.layout.addLayout(self.executeLayout)
-        self.layout.addLayout(self.scriptLayout)
+        self.layout.addLayout(self.bashLayout)
+        self.layout.addLayout(self.bashLayout2)
+        self.layout.addLayout(self.applicationLayout)
+        self.layout.addLayout(self.containerLayout)
         self.layout.addLayout(self.fileListLayout)
         self.layout.addLayout(self.outputFileLayout)
         self.layout.addLayout(self.checkPointLayout)
+        self.layout.addLayout(self.jdlCustomLayout)
+        self.layout.addLayout(self.jdlCustomLayout2)
+
         self.layout.addLayout(self.doneLayout)
         self.setLayout(self.layout)
 
     def writeJDL(self):
-        inputSandBox = "%s"%(self.scriptFname)
+        inputSandBox = "%s"%(self.applicationFName)
         if os.path.isfile("./LFNTool.py"):
             inputSandBox += ", LFNTool.py"
-        jdl=f'''
-batch_name = {self.appName}
-executable = {self.execFname}
-universe   = vanilla
-arguments  = $(DATAFile)
+        jdl = f'''
+JobBatchName            = {self.appName}_$(Cluster)
+executable = run_{self.appName}.sh
+universe   = container
+requirements = ( HasSingularity == true )
 getenv     = True
-
-transfer_input_files = {inputSandBox}
 should_transfer_files = YES
-when_to_transfer_output = ON_EXIT
-
+Container_image = {self.containerImage}
+output = job_$(Process).out
+error = job_$(Process).err
+log = job_$(Process).log
+transfer_input_files = {inputSandBox}
 transfer_output_files = {self.outputFname}
 transfer_output_remaps = "{self.outputFname} = {self.outputRemapFname}"
+when_to_transfer_output = ON_EXIT_OR_EVICT
 
-
-output = job_$(Process).out
-error  = job_$(Process).err
-log = condor.log
-
-accounting_group=group_cms
 '''
-        print(f"checkpoint : {self.checkPoint}")
         if (self.checkPoint):
             jdl += f'''
+transfer_checkpoint_files = checkpoint.tar.gz, state_running.txt 
+
+
 KillSig= SIGUSR2
 KillSigTimeout = 60
-+SingularityExtraArgs= "--add-caps all"
++SingularityExtraArgs= "--add-caps cap_checkpoint_restore"
 checkpoint_exit_code = 85
 +WantFTOnCheckpoint = True
+
+notification = Error
+notify_user = geonmo@kisti.re.kr
+
++WantFTOnCheckpoint = True
+{ self.jdlCustomTextEdit.toPlainText() }
 '''
             self.writeCheckPointExecutable()
-        jdl += '''
-queue DATAFile from %s
-'''%(self.fileListFname)
+        else:
+            self.writeExecutable()
+            jdl += f'''
+{ self.jdlCustomTextEdit.toPlainText() }
+'''
+        if self.fileListFname == "":
+            jdl += "queue 1"
+        else:
+            jdl += f'''
+arguments  = $(DATAFile)
+queue DATAFile from {self.fileListFname}'''
         f = open( self.appName+".sub","w")
         f.write(jdl)
         f.close()
-        
         sys.exit(0)
     def writeCheckPointExecutable(self):
-        with open(self.execFname) as f:
-            lines = f.readlines()
+        appFName = self.applicationFName.split("/")[-1]
+        with open(f"run_{self.appName}.sh","w") as f:
+            runsh = '''
+#!/bin/bash
+
+trap ReceiveCheckPointSignal SIGUSR2
+
+function ReceiveCheckPointSignal() {
+        rm -rf "dumped_images-*"
+        IMG_DIR="dumped_images-$(uuidgen)"
+        mkdir ${IMG_DIR}
+        /usr/local/sbin/criu dump --unprivileged -v4 -t ${TPID} -D $IMG_DIR -o criu.log
+        tar -czvf checkpoint.tar.gz $IMG_DIR
+        exit 85
+}
+if [ -s checkpoint.tar.gz ]; then
+        tar -zxvf checkpoint.tar.gz
+        IMG_DIR=$(echo dumped_images-*)
+        /usr/local/sbin/criu restore --unprivileged -v4 -d -D $IMG_DIR
+
+else
+        if [ -z $TPID ]; then
+                echo "Can not find {appFName}. Start script from begining"
+                setsid ./{appFName} </dev/null &> /dev/null &
+                TPID=$!
+        else
+                echo "Found {appFName}: $TPID"
+        fi
+'''
+            runsh+='''
+        while true
+        do
+                echo "Monitoring ${TPID} procces"
+                kill -s 0 ${TPID}
+                if [ $? -ne 0 ]; then
+                   exit 0
+                fi
+                if [[ -e state_running.txt && $(tail -n1 state_running.txt) == "10" ]]; then
+                        kill -SIGUSR2 $$
+                        echo "Checkpoint!!" >> state_running.txt
+                fi
+                sleep 1
+        done
+fi
+'''
+            print(runsh)
+            f.write(runsh)
+            f.close()
+    def writeExecutable(self):
+        with open(f"run_{self.appName}.sh",'w') as f:
+            f.write(self.bashTextEdit.toPlainText())
+            f.write(f"\n{self.applicationFName} $1")
+            f.close()
     def searchOutputFile(self):
-        infile = open(self.scriptFname)
+        infile = open(self.applicationFName)
         lines = infile.readlines()
         for line in lines :
             sline = line.strip()
@@ -182,14 +262,18 @@ queue DATAFile from %s
         self.execFname = QFileDialog.getOpenFileName(self)[0]
         filename = self.execFname.split("/")[-1]
         self.executeLineEdit.setText(filename)
-    def openScriptFile(self):
+    def openContainerFile(self):
+        self.containerImage = QFileDialog.getOpenFileName(self)[0]
+        filename = self.containerImage.split("/")[-1]
+        self.containerLineEdit.setText(filename)
+    def openApplicationFile(self):
         scriptDialog = QFileDialog()
         dialogwindow = \
         scriptDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()","","All \
                 Files (*);;Python Files (*.py);;ROOT Macro Files (*.C)")
-        self.scriptFname = dialogwindow[0]
-        filename = self.scriptFname.split("/")[-1]
-        self.scriptLineEdit.setText(filename)
+        self.applicationFName = dialogwindow[0]
+        filename = self.applicationFName.split("/")[-1]
+        self.applicationLineEdit.setText(filename)
 
 
 if __name__ == "__main__":

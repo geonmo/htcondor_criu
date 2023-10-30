@@ -9,8 +9,12 @@ output = job_$(Process).out
 error = job_$(Process).err
 log = job_$(Process).log
 
+stream_output= True
+stream_error= True
+
+
 KillSig= SIGUSR2
-KillSigTimeout = 60
+JobMaxVacateTime = 60
 transfer_input_files = test_sleep.sh
 transfer_checkpoint_files = checkpoint.tar.gz, state_running.txt 
 transfer_output_files = state_running.txt, finish.txt
