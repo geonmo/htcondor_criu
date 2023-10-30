@@ -6,4 +6,7 @@
         cmd: "sudo apptainer capability drop --group checkpoint all"
       ignore_errors: yes
     - shell:
-        cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore,cap_net_admin,cap_sys_resource"
+        cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore"
+        #cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore,cap_setpcap"
+        #cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore,cap_sys_resource,cap_setpcap"
+        #cmd: "sudo apptainer capability add --group checkpoint cap_checkpoint_restore,cap_net_admin,cap_sys_resource,cap_setpcap"

@@ -1,0 +1,35 @@
+JobBatchName            = CRIU_Test_$(Cluster)
+executable = criu_test.sh
+universe   = container
+requirements = ( HasSingularity == true )
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT_OR_EVICT
+output = job_$(Process).out
+error = job_$(Process).err
+log = job_$(Process).log
+
+KillSig= SIGUSR2
+KillSigTimeout = 60
+transfer_input_files = test_sleep.sh
+transfer_checkpoint_files = checkpoint.tar.gz, state_running.txt 
+transfer_output_files = state_running.txt, finish.txt
+
+Container_image = ./criu.sif
+#+SingularityBind = "/shared"
+#+SingularityExtraArgs= "--add-caps cap_checkpoint_restore"
+#+SingularityExtraArgs= "--add-caps cap_sys_admin"
+#+SingularityExtraArgs= "--fakeroot --add-caps cap_checkpoint_restore,cap_net_admin,cap_sys_resource,cap_set_pcap"
+#+SingularityExtraArgs= "--add-caps cap_checkpoint_restore,cap_net_admin,cap_sys_resource,cap_setpcap"
+#+SingularityExtraArgs= "--add-caps cap_checkpoint_restore,cap_sys_resource,cap_setpcap"
+#+SingularityExtraArgs= "--add-caps cap_checkpoint_restore,cap_setpcap"
++SingularityExtraArgs= "--add-caps cap_checkpoint_restore"
+
+
+checkpoint_exit_code = 85
++WantFTOnCheckpoint = True
+
+notification = Error
+notify_user = geonmo@kisti.re.kr
+
+queue 1
