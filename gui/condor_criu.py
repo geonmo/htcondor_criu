@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys,os,platform,subprocess
+import sys,os,stat,platform,subprocess
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
 
@@ -123,13 +123,21 @@ requirements = ( HasSingularity == true )
 getenv     = True
 should_transfer_files = YES
 Container_image = {self.containerImage}
+
 output = job_$(Process).out
 error = job_$(Process).err
 log = job_$(Process).log
+stream_output = True
+stream_error = True
+
 transfer_input_files = {inputSandBox}
 transfer_output_files = {self.outputFname}
 transfer_output_remaps = "{self.outputFname} = {self.outputRemapFname}"
 when_to_transfer_output = ON_EXIT_OR_EVICT
+notification = Error
+notify_user = ## Egs) {os.environ["USER"]}@kisti.re.kr
+
+
 
 '''
         if (self.checkPoint):
@@ -143,10 +151,6 @@ KillSigTimeout = 60
 checkpoint_exit_code = 85
 +WantFTOnCheckpoint = True
 
-notification = Error
-notify_user = geonmo@kisti.re.kr
-
-+WantFTOnCheckpoint = True
 { self.jdlCustomTextEdit.toPlainText() }
 '''
             self.writeCheckPointExecutable()
@@ -167,9 +171,9 @@ queue DATAFile from {self.fileListFname}'''
         sys.exit(0)
     def writeCheckPointExecutable(self):
         appFName = self.applicationFName.split("/")[-1]
-        with open(f"run_{self.appName}.sh","w") as f:
-            runsh = '''
-#!/bin/bash
+        runfilename=f"run_{self.appName}.sh"
+        with open(runfilename,"w") as f:
+            runsh = '''#!/bin/bash
 
 trap ReceiveCheckPointSignal SIGUSR2
 
@@ -177,6 +181,7 @@ function ReceiveCheckPointSignal() {
         rm -rf "dumped_images-*"
         IMG_DIR="dumped_images-$(uuidgen)"
         mkdir ${IMG_DIR}
+        echo ${TPID} >> ${IMG_DIR}/tpid
         /usr/local/sbin/criu dump --unprivileged -v4 -t ${TPID} -D $IMG_DIR -o criu.log
         tar -czvf checkpoint.tar.gz $IMG_DIR
         exit 85
@@ -185,35 +190,23 @@ if [ -s checkpoint.tar.gz ]; then
         tar -zxvf checkpoint.tar.gz
         IMG_DIR=$(echo dumped_images-*)
         /usr/local/sbin/criu restore --unprivileged -v4 -d -D $IMG_DIR
-
-else
-        if [ -z $TPID ]; then
-                echo "Can not find {appFName}. Start script from begining"
-                setsid ./{appFName} </dev/null &> /dev/null &
-                TPID=$!
-        else
-                echo "Found {appFName}: $TPID"
+        TPID=$(cat $IMG_DIR/tpid)
+        if [ $? -ne 0 ]; then
+                kill -9 ${TPID}
+                exit 85
         fi
-'''
-            runsh+='''
-        while true
-        do
-                echo "Monitoring ${TPID} procces"
-                kill -s 0 ${TPID}
-                if [ $? -ne 0 ]; then
-                   exit 0
-                fi
-                if [[ -e state_running.txt && $(tail -n1 state_running.txt) == "10" ]]; then
-                        kill -SIGUSR2 $$
-                        echo "Checkpoint!!" >> state_running.txt
-                fi
-                sleep 1
-        done
+else'''
+            runsh += f'''
+        echo "Can not find {appFName}. Start script from begining"
+        setsid ./{appFName} </dev/null &> /dev/null &
+        TPID=$!
 fi
 '''
-            print(runsh)
+            runsh+=self.bashTextEdit.toPlainText()
             f.write(runsh)
             f.close()
+            st = os.stat(runfilename)
+            os.chmod(runfilename, st.st_mode| stat.S_IEXEC)
     def writeExecutable(self):
         with open(f"run_{self.appName}.sh",'w') as f:
             f.write(self.bashTextEdit.toPlainText())
@@ -248,12 +241,30 @@ fi
     def appAddProcess(self):
         self.appLineEdit.setText( self.appLineEdit.text() + "$(Process)")
     def setCheckPoint(self,state):
-        print("Call setCheckpoint")
         if(state == Qt.Checked):
-            print("enable checkpoint")
             self.checkPoint = True
+            checkpoint_run_sh_template='''
+while true
+do
+        echo "Monitoring ${TPID} procces"
+        kill -s 0 ${TPID}
+        if [ $? -ne 0 ]; then
+           exit 0
+        fi
+        if [[ -e state_running.txt && $(tail -n1 state_running.txt) == "10" ]]; then
+                echo "Checkpoint!!" >> state_running.txt
+                kill -SIGUSR2 $$
+        fi
+        sleep 1
+done
+
+            '''
+            self.bashTextEdit.setText(checkpoint_run_sh_template)
+
         else:
             self.checkPoint = False
+            self.bashTextEdit.setText("#!/bin/bash\nsource /cvmfs/cms.cern.ch/cmsset_default.sh")
+
     def openFileListFile(self):
         self.fileListFname = QFileDialog.getOpenFileName(self)[0]
         filename = self.fileListFname.split("/")[-1]
